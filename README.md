@@ -26,6 +26,9 @@ A production-grade inference logging and ingestion system for LLM applications â
 ## Demo Screenshots: 
 <img width="2559" height="1472" alt="image" src="https://github.com/user-attachments/assets/5456b76a-cf34-49cc-9bae-5ff10166cc40" />
 
+**Once we click on "+New":**
+<img width="2559" height="1473" alt="image" src="https://github.com/user-attachments/assets/bfe7adaf-0329-4fa9-bd31-057266099983" />
+
 ---
 
 ## Table of Contents
