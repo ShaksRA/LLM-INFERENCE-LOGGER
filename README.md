@@ -30,6 +30,9 @@ A production-grade inference logging and ingestion system for LLM applications â
 **Once we click on "+ New":**
 <img width="2559" height="1473" alt="image" src="https://github.com/user-attachments/assets/bfe7adaf-0329-4fa9-bd31-057266099983" />
 
+<img width="2559" height="1469" alt="image" src="https://github.com/user-attachments/assets/adf377fa-c78a-477d-80a7-5d572a7022b6" />
+
+**After asking "Hi, how are you?", received response from Anthropic successfully and Chat history is created as well**
 ---
 
 ## Table of Contents
