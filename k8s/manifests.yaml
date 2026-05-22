@@ -1,0 +1,213 @@
+---
+# Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: llm-logger
+
+---
+# ConfigMap for non-secret config
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: llm-logger-config
+  namespace: llm-logger
+data:
+  DB_PATH: "/data/inference_logger.db"
+
+---
+# Secret (populate with: kubectl create secret generic llm-keys --from-env-file=.env)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: llm-api-keys
+  namespace: llm-logger
+type: Opaque
+# Populate with: kubectl create secret generic llm-api-keys \
+#   --from-literal=ANTHROPIC_API_KEY=sk-ant-... \
+#   --from-literal=OPENAI_API_KEY=sk-... \
+#   -n llm-logger
+
+---
+# PersistentVolumeClaim for SQLite data
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: llm-logger-data
+  namespace: llm-logger
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+# Backend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-logger-api
+  namespace: llm-logger
+  labels:
+    app: llm-logger-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: llm-logger-api
+  template:
+    metadata:
+      labels:
+        app: llm-logger-api
+    spec:
+      containers:
+        - name: api
+          image: llm-logger-api:latest   # replace with your registry
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: llm-logger-config
+            - secretRef:
+                name: llm-api-keys
+          volumeMounts:
+            - mountPath: /data
+              name: data-vol
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: data-vol
+          persistentVolumeClaim:
+            claimName: llm-logger-data
+
+---
+# Backend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: llm-logger-api-svc
+  namespace: llm-logger
+spec:
+  selector:
+    app: llm-logger-api
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
+
+---
+# Frontend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-logger-frontend
+  namespace: llm-logger
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: llm-logger-frontend
+  template:
+    metadata:
+      labels:
+        app: llm-logger-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: llm-logger-frontend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+
+---
+# Frontend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: llm-logger-frontend-svc
+  namespace: llm-logger
+spec:
+  selector:
+    app: llm-logger-frontend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+
+---
+# Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: llm-logger-ingress
+  namespace: llm-logger
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+spec:
+  rules:
+    - host: llm-logger.yourdomain.com
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: llm-logger-api-svc
+                port:
+                  number: 8000
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: llm-logger-frontend-svc
+                port:
+                  number: 80
+
+---
+# HorizontalPodAutoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: llm-logger-api-hpa
+  namespace: llm-logger
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: llm-logger-api
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
