@@ -21,7 +21,9 @@ A production-grade inference logging and ingestion system for LLM applications â
 > Screenshots of the running application are included at the bottom of this README.
 
 **To run the demo:** Clone this repo, add your API key to `.env`, and run `docker compose up --build`. Open http://localhost:3000.
-
+---
+##Demo Screenshots: 
+<img width="2559" height="1472" alt="image" src="https://github.com/user-attachments/assets/5456b76a-cf34-49cc-9bae-5ff10166cc40" />
 ---
 
 ## Table of Contents
